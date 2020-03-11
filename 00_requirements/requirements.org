@@ -1,0 +1,9 @@
+* Requirements and dependencies
+
+You will need to install [[https://github.com/torognes/vsearch][vsearch]], cutadapt and swarm.
+
+You will also need python 3 (tested with python 3.7) and a recent
+version of bash (bash version 4, published in 2009). MacOS users
+beware, Apple's Terminal used to provide an older version of bash
+(version 3). I try not to use bash version 4 specific code, but I
+might accidentally do it.
