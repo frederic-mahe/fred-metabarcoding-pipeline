@@ -1,11 +1,12 @@
 * Merge, trim and dereplicate pairs of fastq files
 
-fastq files are already duplicated, a pair of R1 and R2 files for each
-sample.
+Initial situation: fastq files are already duplicated, we have a pair
+of R1 and R2 files for each sample.
 
-To adapt it to another dataset, you need to change primer sequences,
-and the raw fastq file search pattern and sample file naming if your
-raw fastq files follow another naming rule:
+To adapt it to another dataset, you need to change primer sequences in
+the initial block of variables, and the raw fastq file search pattern
+and sample file naming if your raw fastq files follow another naming
+rule (in the final `while` loop):
 
 #+BEGIN_SRC sh
   export LC_ALL=C
