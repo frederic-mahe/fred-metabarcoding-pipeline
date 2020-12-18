@@ -2,10 +2,12 @@
 
 You will need to install [[https://github.com/torognes/vsearch][vsearch]], [[https://github.com/marcelm/cutadapt/][cutadapt]], [[https://github.com/torognes/swarm][swarm]], and [[https://github.com/tobiasgf/lulu][lulu]].
 
-I will assume that you also have python (version 3.5 or more), [[https://cran.r-project.org/][R]]
-(version 3.5 or more), and bash (version 4 or more).
+I will assume that you also have [[https://www.python.org/][python]] (version 3.5 or more), [[https://cran.r-project.org/][R]]
+(version 3.5 or more), and [[https://www.gnu.org/software/bash/][bash]] (version 4 or more).
 
 #+BEGIN_SRC sh
+  #!/usr/bin/env bash
+
   # check software versions
   for SOFT in bash R python3 swarm vsearch cutadapt ; do
       "${SOFT}" --version 2>&1 | head -n 1
