@@ -22,7 +22,7 @@ rule (in the final =while= loop):
   declare -ri ENCODING=33
   declare -r MIN_F=$(( ${#PRIMER_F} * 2 / 3 ))  # match is >= 2/3 of primer length
   declare -r MIN_R=$(( ${#PRIMER_R} * 2 / 3 ))
-  declare -r FIFOS=$(echo fifo_{merged_fastq,trimmed_fastq,filtered_fastq})
+  declare -r FIFOS=$(echo fifo_{merged,trimmed}_fastq fifo_filtered_fasta{,_bis})
   declare -i TICKER=0
 
   merge_fastq_pair() {
@@ -47,7 +47,16 @@ rule (in the final =while= loop):
               -O "${MIN_R}" - > fifo_trimmed_fastq 2>> "${LOG}" &
   }
 
-  convert_fastq_to_fasta_and_extract_error_rate() {
+  extract_error_rate() {
+      # extract "expected error" annotations (ee) for later quality
+      # filtering
+      paste - - < fifo_filtered_fasta_bis | \
+          awk -F "[>;=\t]" '{print $2, $4, length($NF)}' | \
+          sort -k3,3n -k1,1d -k2,2n | \
+          uniq --check-chars=40 > "${QUAL}" &
+  }
+
+  convert_fastq_to_fasta() {
       # discard reads with Ns, extract "expected error" annotations (ee)
       # for later quality filtering
       ${VSEARCH} \
@@ -58,15 +67,13 @@ rule (in the final =while= loop):
           --eeout \
           --fasta_width 0 \
           --fastaout - 2>> "${LOG}" | \
-          tee >(paste - - | awk -F "[>;=\t]" '{print $2, $4, length($NF)}' | \
-                    sort -k3,3n -k1,1d -k2,2n | \
-                    uniq --check-chars=40 > "${QUAL}") > fifo_filtered_fastq &
+          tee fifo_filtered_fasta_bis > fifo_filtered_fasta &
   }
 
   dereplicate_fasta() {
       # discard "expected error" annotations (ee)
       ${VSEARCH} \
-          --derep_fulllength fifo_filtered_fastq \
+          --derep_fulllength fifo_filtered_fasta \
           --sizeout \
           --fasta_width 0 \
           --xee \
@@ -105,7 +112,8 @@ rule (in the final =while= loop):
 
           merge_fastq_pair
           trim_primers
-          convert_fastq_to_fasta_and_extract_error_rate
+          convert_fastq_to_fasta &
+          extract_error_rate
           dereplicate_fasta
           list_local_clusters
 
