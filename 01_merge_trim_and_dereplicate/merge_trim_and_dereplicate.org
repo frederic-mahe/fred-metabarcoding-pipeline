@@ -41,10 +41,10 @@ rule (in the final =while= loop):
       ${CUTADAPT} \
           --revcomp \
           -g "${PRIMER_F}" \
-          -O "${MIN_F}" fifo_merged_fastq 2>> "${LOG}" | \
+          -O "${MIN_F}" fifo_merged_fastq 2>> "${SAMPLE}.log" | \
           ${CUTADAPT} \
               -a "${ANTI_PRIMER_R}" \
-              -O "${MIN_R}" - > fifo_trimmed_fastq 2>> "${LOG}" &
+              -O "${MIN_R}" - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
   }
 
   extract_error_rate() {
@@ -53,7 +53,7 @@ rule (in the final =while= loop):
       paste - - < fifo_filtered_fasta_bis | \
           awk -F "[>;=\t]" '{print $2, $4, length($NF)}' | \
           sort -k3,3n -k1,1d -k2,2n | \
-          uniq --check-chars=40 > "${QUAL}" &
+          uniq --check-chars=40 > "${SAMPLE}.qual" &
   }
 
   convert_fastq_to_fasta() {
@@ -66,7 +66,7 @@ rule (in the final =while= loop):
           --fastq_ascii "${ENCODING}" \
           --eeout \
           --fasta_width 0 \
-          --fastaout - 2>> "${LOG}" | \
+          --fastaout - 2>> "${SAMPLE}.log" | \
           tee fifo_filtered_fasta_bis > fifo_filtered_fasta &
   }
 
@@ -77,7 +77,7 @@ rule (in the final =while= loop):
           --sizeout \
           --fasta_width 0 \
           --xee \
-          --output "${FASTA}" 2>> "${LOG}"
+          --output "${SAMPLE}.fas" 2>> "${SAMPLE}.log"
   }
 
   list_local_clusters() {
@@ -90,8 +90,8 @@ rule (in the final =while= loop):
           --log /dev/null \
           --output-file /dev/null \
           --statistics-file - \
-          "${FASTA}" | \
-          awk 'BEGIN {FS = OFS = "\t"} $2 > 2' > "${LOCAL_STATS}"
+          "${SAMPLE}.fas" | \
+          awk 'BEGIN {FS = OFS = "\t"} $2 > 2' > "${SAMPLE}.stats"
   }
 
   # from raw fastq files to cooked fasta
@@ -99,12 +99,8 @@ rule (in the final =while= loop):
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
-          REVERSE="${FORWARD/_R1/_R2}"
+          REVERSE="${FORWARD/_R1/_R2}"  # adapt to fastq name patterns
           SAMPLE="${FORWARD/_R1.*/}"
-          LOG="${SAMPLE}.log"
-          FASTA="${SAMPLE}.fas"
-          QUAL="${SAMPLE}.qual"
-          LOCAL_STATS="${SAMPLE}.stats"
 
           # clean (remove older files)
           rm -f "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
@@ -112,19 +108,22 @@ rule (in the final =while= loop):
 
           merge_fastq_pair
           trim_primers
-          convert_fastq_to_fasta &
+          convert_fastq_to_fasta
           extract_error_rate
           dereplicate_fasta
           list_local_clusters
 
           # clean (make sure fifos are not reused)
           rm ${FIFOS}
+          unset FORWARD REVERSE SAMPLE
       done
 #+END_SRC
 
 The code above uses named pipes (fifo) to avoid writing intermediate
 results to mass storage. The goal is to speed up processing, and to
-make the code more modular and clearer.
+make the code more modular and clearer. On the other hand, fifos are
+tricky to use, as you must remember to launch producers and consumers
+in the backgroup before running the last consumer.
 
 Under certain rare multithreading conditions, vearch (merge) can hang,
 interrupting the data flow and the pipeline. Until that bug can be
