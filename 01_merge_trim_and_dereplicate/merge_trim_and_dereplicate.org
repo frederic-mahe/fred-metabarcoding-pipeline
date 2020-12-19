@@ -95,7 +95,7 @@ rule (in the final =while= loop):
   }
 
   # from raw fastq files to cooked fasta
-  find . -name "*_R1.fastq.gz" -type f -print0 | \
+  find . -name "*_R1.fastq.gz" -type f ! -empty -print0 | \
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
@@ -119,12 +119,12 @@ rule (in the final =while= loop):
       done
 #+END_SRC
 
-The code above uses named pipes (fifo) to avoid writing intermediate
+The code above uses named pipes (=fifo=) to avoid writing intermediate
 results to mass storage. The goal is to speed up processing, and to
 make the code more modular and clearer. On the other hand, fifos are
 tricky to use, as you must remember to launch producers and consumers
 in the backgroup before running the last consumer.
 
-Under certain rare multithreading conditions, vearch (merge) can hang,
-interrupting the data flow and the pipeline. Until that bug can be
-reproduced and fixed, be cautious.
+Under certain rare multithreading conditions, vearch
+(=--fastq_mergepairs=) can hang, interrupting the data flow and the
+pipeline. Until that bug can be reproduced and fixed, be cautious.
