@@ -11,12 +11,13 @@ rule (in the final =while= loop):
 #+BEGIN_SRC sh
   export LC_ALL=C
 
-  # Define variables, temporary files and output files
+  ## ------------------------------------------------------------ define variables
   declare -r PRIMER_F="TTGTACACACCGCCC"
   declare -r PRIMER_R="CCTTCNGCAGGTTCACCTAC"
   declare -r ANTI_PRIMER_R="GTAGGTGAACCTGCNGAAGG"
   declare -ri THREADS=4
-  declare -r CUTADAPT="$(which cutadapt) --minimum-length 32 --cores=${THREADS} --discard-untrimmed --times=2"  # cutadapt 3.1
+  declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed --times=2"
+  declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 3.1
   declare -r SWARM="$(which swarm)"
   declare -r VSEARCH="$(which vsearch) --quiet"
   declare -ri ENCODING=33
@@ -25,6 +26,7 @@ rule (in the final =while= loop):
   declare -r FIFOS=$(echo fifo_{merged,trimmed}_fastq fifo_filtered_fasta{,_bis})
   declare -i TICKER=0
 
+  ## ------------------------------------------------------------------- functions
   merge_fastq_pair() {
       ${VSEARCH} \
           --threads "${THREADS}" \
@@ -40,18 +42,18 @@ rule (in the final =while= loop):
       # all reads are in the same orientation
       ${CUTADAPT} \
           --revcomp \
-          -g "${PRIMER_F}" \
-          -O "${MIN_F}" fifo_merged_fastq 2>> "${SAMPLE}.log" | \
+          --front "${PRIMER_F}" \
+          --overlap "${MIN_F}" fifo_merged_fastq 2>> "${SAMPLE}.log" | \
           ${CUTADAPT} \
-              -a "${ANTI_PRIMER_R}" \
-              -O "${MIN_R}" - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
+              --adapter "${ANTI_PRIMER_R}" \
+              --overlap "${MIN_R}" - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
   }
 
   extract_error_rate() {
-      # extract "expected error" annotations (ee) for later quality
+      # extract "expected error" annotations (ee) for future quality
       # filtering
       paste - - < fifo_filtered_fasta_bis | \
-          awk -F "[>;=\t]" '{print $2, $4, length($NF)}' | \
+          awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
           sort -k3,3n -k1,1d -k2,2n | \
           uniq --check-chars=40 > "${SAMPLE}.qual" &
   }
@@ -94,7 +96,8 @@ rule (in the final =while= loop):
           awk 'BEGIN {FS = OFS = "\t"} $2 > 2' > "${SAMPLE}.stats"
   }
 
-  # from raw fastq files to cooked fasta
+  ## ------------------------------------------------------------------------ main
+  # from raw fastq files to ready-to-use sample files
   find . -name "*_R1.fastq.gz" -type f ! -empty -print0 | \
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
@@ -102,8 +105,8 @@ rule (in the final =while= loop):
           REVERSE="${FORWARD/_R1/_R2}"  # adapt to fastq name patterns
           SAMPLE="${FORWARD/_R1.*/}"
 
-          # clean (remove older files)
-          rm -f "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
+          # clean (remove older files, if any)
+          rm --force "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
           mkfifo ${FIFOS}
 
           merge_fastq_pair
@@ -125,6 +128,6 @@ make the code more modular and clearer. On the other hand, fifos are
 tricky to use, as you must remember to launch producers and consumers
 in the backgroup before running the last consumer.
 
-Under certain rare multithreading conditions, vearch
-(=--fastq_mergepairs=) can hang, interrupting the data flow and the
+Under certain rare multithreading conditions, =vsearch
+--fastq_mergepairs= can hang, interrupting the data flow and the
 pipeline. Until that bug can be reproduced and fixed, be cautious.
