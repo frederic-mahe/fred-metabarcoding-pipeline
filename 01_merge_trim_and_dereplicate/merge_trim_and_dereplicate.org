@@ -76,7 +76,7 @@ rule (in the final =while= loop):
       # observed expected error value for each unique sequence)
       paste - - < fifo_filtered_fasta_bis | \
           awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
-          sort -k3,3n -k1,1d -k2,2n | \
+          sort --key=3,3n --key=1,1d --key=2,2n | \
           uniq --check-chars=40 > "${SAMPLE}.qual" &
   }
 
