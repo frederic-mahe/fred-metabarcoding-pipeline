@@ -14,7 +14,6 @@ rule (in the final =while= loop):
   ## ------------------------------------------------------------ define variables
   declare -r PRIMER_F="TTGTACACACCGCCC"
   declare -r PRIMER_R="CCTTCNGCAGGTTCACCTAC"
-  declare -r ANTI_PRIMER_R="GTAGGTGAACCTGCNGAAGG"
   declare -ri THREADS=4
   declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed --times=2"
   declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 3.1
@@ -24,9 +23,18 @@ rule (in the final =while= loop):
   declare -r MIN_F=$(( ${#PRIMER_F} * 2 / 3 ))  # match is >= 2/3 of primer length
   declare -r MIN_R=$(( ${#PRIMER_R} * 2 / 3 ))
   declare -r FIFOS=$(echo fifo_{merged,trimmed}_fastq fifo_filtered_fasta{,_bis})
+  declare -ri MIN_FASTQ_SIZE=20  # empty fastq file is 20 bytes when gziped
   declare -i TICKER=0
 
   ## ------------------------------------------------------------------- functions
+  revcomp() {
+      # reverse-complement a DNA/RNA IUPAC string
+      [[ -z "${1}" ]] && { echo "error: empty string" ; exit 1 ; }
+      local -r nucleotides="acgturykmbdhvswACGTURYKMBDHVSW"
+      local -r complements="tgcaayrmkvhdbswTGCAAYRMKVHDBSW"
+      tr "${nucleotides}" "${complements}" <<< "${1}" | rev
+  }
+
   merge_fastq_pair() {
       ${VSEARCH} \
           --threads "${THREADS}" \
@@ -50,15 +58,6 @@ rule (in the final =while= loop):
               --max-n 0 - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
   }
 
-  extract_expected_error_values() {
-      # extract ee for future quality filtering (keep the lowest
-      # observed expected error value for each unique sequence)
-      paste - - < fifo_filtered_fasta_bis | \
-          awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
-          sort -k3,3n -k1,1d -k2,2n | \
-          uniq --check-chars=40 > "${SAMPLE}.qual" &
-  }
-
   convert_fastq_to_fasta() {
       # use SHA1 values as sequence names,
       # compute expected error values (ee)
@@ -70,6 +69,15 @@ rule (in the final =while= loop):
           --fasta_width 0 \
           --fastaout - 2>> "${SAMPLE}.log" | \
           tee fifo_filtered_fasta_bis > fifo_filtered_fasta &
+  }
+
+  extract_expected_error_values() {
+      # extract ee for future quality filtering (keep the lowest
+      # observed expected error value for each unique sequence)
+      paste - - < fifo_filtered_fasta_bis | \
+          awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
+          sort -k3,3n -k1,1d -k2,2n | \
+          uniq --check-chars=40 > "${SAMPLE}.qual" &
   }
 
   dereplicate_fasta() {
@@ -98,15 +106,17 @@ rule (in the final =while= loop):
 
   ## ------------------------------------------------------------------------ main
   # from raw fastq files to ready-to-use sample files
-  find . -name "*_R1.fastq.gz" -type f ! -empty -print0 | \
+  declare -r ANTI_PRIMER_R="$(revcomp "${PRIMER_R}")"
+  find . -name "*_R1.fastq.gz" -type f -size +${MIN_FASTQ_SIZE}c -print0 | \
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
           REVERSE="${FORWARD/_R1/_R2}"  # adapt to fastq name patterns
           SAMPLE="${FORWARD/_R1.*/}"
 
-          # clean (remove older files, if any)
+          # clean (remove older files, if any) and skip if R2 is empty
           rm --force "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
+          [[ $(stat --printf="%s" "${REVERSE}") -gt ${MIN_FASTQ_SIZE} ]] || continue
           mkfifo ${FIFOS}
 
           merge_fastq_pair
