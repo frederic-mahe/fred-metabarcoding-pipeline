@@ -38,20 +38,21 @@ rule (in the final =while= loop):
   }
 
   trim_primers() {
-      # search forward primer in both normal and revcomp, from now on
-      # all reads are in the same orientation
+      # search forward primer in both normal and revcomp: now all reads
+      # are in the same orientation
       ${CUTADAPT} \
           --revcomp \
           --front "${PRIMER_F}" \
           --overlap "${MIN_F}" fifo_merged_fastq 2>> "${SAMPLE}.log" | \
           ${CUTADAPT} \
               --adapter "${ANTI_PRIMER_R}" \
-              --overlap "${MIN_R}" - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
+              --overlap "${MIN_R}" \
+              --max-n 0 - > fifo_trimmed_fastq 2>> "${SAMPLE}.log" &
   }
 
-  extract_error_rate() {
-      # extract "expected error" annotations (ee) for future quality
-      # filtering
+  extract_expected_error_values() {
+      # extract ee for future quality filtering (keep the lowest
+      # observed expected error value for each unique sequence)
       paste - - < fifo_filtered_fasta_bis | \
           awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
           sort -k3,3n -k1,1d -k2,2n | \
@@ -59,11 +60,10 @@ rule (in the final =while= loop):
   }
 
   convert_fastq_to_fasta() {
-      # discard reads with Ns, extract "expected error" annotations (ee)
-      # for later quality filtering
+      # use SHA1 values as sequence names,
+      # compute expected error values (ee)
       ${VSEARCH} \
           --fastq_filter fifo_trimmed_fastq \
-          --fastq_maxns 0 \
           --relabel_sha1 \
           --fastq_ascii "${ENCODING}" \
           --eeout \
@@ -73,7 +73,7 @@ rule (in the final =while= loop):
   }
 
   dereplicate_fasta() {
-      # discard "expected error" annotations (ee)
+      # dereplicate and discard expected error values (ee)
       ${VSEARCH} \
           --derep_fulllength fifo_filtered_fasta \
           --sizeout \
@@ -112,7 +112,7 @@ rule (in the final =while= loop):
           merge_fastq_pair
           trim_primers
           convert_fastq_to_fasta
-          extract_error_rate
+          extract_expected_error_values
           dereplicate_fasta
           list_local_clusters
 
