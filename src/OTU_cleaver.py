@@ -5,12 +5,13 @@
 """
 
 __author__ = "Frédéric Mahé <frederic.mahe@cirad.fr>"
-__date__ = "2020/03/13"
-__version__ = "$Revision: 1.1"
+__date__ = "2021/03/19"
+__version__ = "$Revision: 1.2"
 
 import os
 import re
 import sys
+import copy
 import argparse
 import operator
 
@@ -219,21 +220,46 @@ def struct_parse(struct_file, seeds, global_seeds):
     return new_clusters
 
 
-def per_cluster_stats(global_stats_file, new_clusters, swarms):
+def add_abundance_values(swarms_file, new_clusters, swarms):
     """
-    Compute per-cluster stats. MAYBE NOT NECESSARY!!
+    Add abundance values and sort (deal with a rare case).
     """
-    print("PROGRESS: computing per-cluster stats", file=sys.stderr)
-    new_stats = list()
-    for super_cluster in new_clusters:
+    print("PROGRESS: sorting each cluster", file=sys.stderr)
+    new_clusters_with_abundance = copy.deepcopy(new_clusters)  # suboptimal
+    for i, super_cluster in enumerate(new_clusters):
         for cluster in super_cluster:
-            total_abundance = 0
-            singletons = 0
-            index = int(cluster[0:2], 16)
-            seed_abundance = swarms[index][cluster]
+            swarm = list()
             for amplicon in super_cluster[cluster]:
                 index = int(amplicon[0:2], 16)
                 abundance = swarms[index][amplicon]
+                swarm.append((amplicon, abundance))
+            # sort amplicons by decreasing abundance value and by
+            # name (fix a rare bug: a tie leading to wrong seed
+            # selection)
+            swarm.sort(key = lambda x: (-x[1], x[0]))
+
+            # check if the seed changed after sorting (rare case)
+            seed = swarm[0][0]
+            if seed != cluster:
+                del new_clusters_with_abundance[i][cluster]
+                cluster = seed
+            new_clusters_with_abundance[i][cluster] = swarm
+
+    return new_clusters_with_abundance
+
+
+def per_cluster_stats(global_stats_file, new_clusters_with_abundance):
+    """
+    Compute per-cluster stats.
+    """
+    print("PROGRESS: computing per-cluster stats", file=sys.stderr)
+    new_stats = list()
+    for super_cluster in new_clusters_with_abundance:
+        for cluster in super_cluster:
+            total_abundance = 0
+            singletons = 0
+            seed_abundance = super_cluster[cluster][0][1]
+            for amplicon, abundance in super_cluster[cluster]:
                 total_abundance += abundance
                 if abundance == 1:
                     singletons += 1
@@ -264,24 +290,15 @@ def per_cluster_stats(global_stats_file, new_clusters, swarms):
     return new_stats
 
 
-def per_cluster_swarms(swarms_file, new_clusters, swarms):
+def per_cluster_swarms(swarms_file, new_clusters_with_abundance):
     """
     Compute per-cluster swarms.
     """
     print("PROGRESS: computing per-cluster swarms", file=sys.stderr)
     with open(swarms_file + "2", "w") as new_swarms_file:
-        for super_cluster in new_clusters:
+        for super_cluster in new_clusters_with_abundance:
             for cluster in super_cluster:
-                new_swarm = list()
-                for amplicon in super_cluster[cluster]:
-                    index = int(amplicon[0:2], 16)
-                    abundance = swarms[index][amplicon]
-                    new_swarm.append((amplicon, abundance))
-                # sort amplicons by decreasing abundance value and by
-                # name (fix a rare bug: a tie leading to wrong seed
-                # selection)
-                new_swarm.sort(key = lambda x: (-x[1], x[0]))
-                print(*[t[0] + ";size=" + str(t[1]) for t in new_swarm],
+                print(*[t[0] + ";size=" + str(t[1]) for t in super_cluster[cluster]],
                       sep=" ", file=new_swarms_file)
 
     return None
@@ -348,27 +365,25 @@ def main():
     else:
         swarm_parameters = "1"
     
-    # global variables
+    # cleaving threshold (keystone parameter)
     PERCENTAGE = 0.05
 
-    # Parse per-sample seed occurrences
+    # Parse input files
     threshold, seeds = per_sample_stats_parse(per_sample_stats_file,
                                               PERCENTAGE)
-
-    # Parse OTU stats
     stats_parse(global_stats_file, threshold, seeds)
-
-    # Parse swarms
     swarms, global_seeds = swarms_parse(swarms_file, seeds)
-
-    # Parse structure
     new_clusters = struct_parse(struct_file, seeds, global_seeds)
 
-    # list of dict, each dict containing dict[seed] = amplicons
-    new_stats = per_cluster_stats(global_stats_file, new_clusters, swarms)
-    per_cluster_swarms(swarms_file, new_clusters, swarms)
+    # Add abundance values
+    new_clusters_with_abundance = add_abundance_values(swarms_file,
+                                                       new_clusters,
+                                                       swarms)
 
-    # Parse OTU fasta
+    # Create output files (stats2, swarms2, fas2)
+    new_stats = per_cluster_stats(global_stats_file,
+                                  new_clusters_with_abundance)
+    per_cluster_swarms(swarms_file, new_clusters_with_abundance)
     fasta_parse(fasta_file, new_stats, swarm_parameters)
 
     return
