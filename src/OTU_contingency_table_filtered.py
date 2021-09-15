@@ -5,8 +5,8 @@ Merge different results into a sorted and filtered OTU contingency table.
 """
 
 __author__ = "Frédéric Mahé <frederic.mahe@cirad.fr>"
-__date__ = "2021/07/09"
-__version__ = "$Revision: 4.1"
+__date__ = "2021/09/15"
+__version__ = "$Revision: 4.2"
 
 import re
 import sys
@@ -252,7 +252,7 @@ def distribution_parse(valid_OTUs, distr):
 
 def print_table(representatives, stats, sorted_stats,
                 swarms, uchime, seeds2samples,
-                samples, quality, seeds, stampa):
+                samples, quality, seeds, stampa, EE_threshold):
     """
     Export results.
     """
