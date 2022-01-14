@@ -81,6 +81,8 @@ rule (in the final =while= loop):
   }
 
   dereplicate_fasta() {
+      # temporary fix until vsearch issue #472 is addressed
+      touch "${SAMPLE}.fas"
       # dereplicate and discard expected error values (ee)
       ${VSEARCH} \
           --derep_fulllength fifo_filtered_fasta \
