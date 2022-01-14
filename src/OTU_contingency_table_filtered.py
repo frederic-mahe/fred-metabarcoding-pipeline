@@ -64,6 +64,7 @@ def arg_parse():
     parser.add_argument("--EE_threshold",
                         action="store",
                         dest="EE_threshold",
+                        type=float,
                         default=0.0002,
                         required=False)
 
@@ -154,7 +155,7 @@ def uchime_parse(representatives, chime):
     """
     separator = "\t"
     uchime_file = chime
-    uchime = dict()
+    uchime = dict()  # refactor: create a copy of representatives[index] keys, set status to NA by default
     with open(uchime_file, "r") as uchime_file:
         print("PROGRESS: parsing uchime", file=sys.stderr)
         for line in uchime_file:
