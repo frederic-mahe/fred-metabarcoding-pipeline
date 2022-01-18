@@ -74,10 +74,11 @@ rule (in the final =while= loop):
   extract_expected_error_values() {
       # extract ee for future quality filtering (keep the lowest
       # observed expected error value for each unique sequence)
+      local -ri length_of_sequence_IDs=40
       paste - - < fifo_filtered_fasta_bis | \
           awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
           sort --key=3,3n --key=1,1d --key=2,2n | \
-          uniq --check-chars=40 > "${SAMPLE}.qual" &
+          uniq --check-chars=${length_of_sequence_IDs} > "${SAMPLE}.qual" &
   }
 
   dereplicate_fasta() {
