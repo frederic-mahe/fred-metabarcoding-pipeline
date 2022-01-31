@@ -101,8 +101,6 @@ def update_otu_table(old_otu_table, amplicons, new_otu_table):
                 line[10], line[11], line[12] = amplicons[index][amplicon]
                 print("\t".join(line), file=new_otu_table)
 
-    return None
-
 
 def main():
     """
@@ -118,8 +116,6 @@ def main():
 
     # Parse the old OTU table and write a new one
     update_otu_table(old_otu_table, amplicons, new_otu_table)
-
-    return None
 
 
 # *************************************************************************** #
