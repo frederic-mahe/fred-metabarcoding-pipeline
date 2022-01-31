@@ -50,9 +50,9 @@ def parse_taxonomy(new_taxonomy_file):
     separator = "\t"
     amplicons = [dict() for i in range(0, 256)]
 
-    with open(new_taxonomy_file, "r") as new_taxonomy_file:
+    with open(new_taxonomy_file, "r") as new_taxonomy_data:
         print("PROGRESS: parsing taxonomy", file=sys.stderr)
-        for line in new_taxonomy_file:
+        for line in new_taxonomy_data:
             amplicon, abundance, identity, taxonomy, references = \
                 line.strip().split(separator)
             index = int(amplicon[0:2], 16)
@@ -82,17 +82,17 @@ def update_otu_table(old_otu_table, amplicons, new_otu_table):
     """
     separator = "\t"
     is_first_line = True
-    with open(old_otu_table, "r") as old_otu_table:
-        with open(new_otu_table, "w") as new_otu_table:
+    with open(old_otu_table, "r") as old_otu_data:
+        with open(new_otu_table, "w") as new_otu_file:
             print("PROGRESS: parsing and updating old OTU table",
                   file=sys.stderr)
-            for line in old_otu_table:
+            for line in old_otu_data:
                 line = line.strip().split(separator)
 
                 # header line is printed as-is
                 if is_first_line:
                     is_first_line = False
-                    print("\t".join(line), file=new_otu_table)
+                    print("\t".join(line), file=new_otu_file)
                     continue
 
                 # update identity, taxonomy and references
