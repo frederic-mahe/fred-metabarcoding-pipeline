@@ -5,8 +5,8 @@
 """
 
 __author__ = "Frédéric Mahé <frederic.mahe@cirad.fr>"
-__date__ = "2020/01/08"
-__version__ = "$Revision: 1.0"
+__date__ = "2022/01/31"
+__version__ = "$Revision: 2.0"
 
 import sys
 import argparse
