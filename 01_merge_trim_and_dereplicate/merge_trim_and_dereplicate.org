@@ -16,8 +16,8 @@ rule (in the final =while= loop):
   declare -r PRIMER_R="CCTTCNGCAGGTTCACCTAC"
   declare -r FASTQ_NAME_PATTERN="*_R1.fastq.gz"
   declare -ri THREADS=4
-  declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed --times=2"
-  declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 3.1 or more recent
+  declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed"
+  declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 4.1 or more recent
   declare -r SWARM="$(which swarm)"  # swarm 3.0 or more recent
   declare -r VSEARCH="$(which vsearch) --quiet"  # vsearch 2.21.1 or more recent
   declare -ri ENCODING=33
@@ -50,7 +50,7 @@ rule (in the final =while= loop):
       # are in the same orientation
       ${CUTADAPT} \
           --revcomp \
-          --front "${PRIMER_F}" \
+          --front "${PRIMER_F};rightmost" \
           --overlap "${MIN_F}" fifo_merged_fastq 2>> "${SAMPLE}.log" | \
           ${CUTADAPT} \
               --adapter "${ANTI_PRIMER_R}" \
