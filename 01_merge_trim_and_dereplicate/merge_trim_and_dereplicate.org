@@ -19,7 +19,7 @@ rule (in the final =while= loop):
   declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed --times=2"
   declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 3.1 or more recent
   declare -r SWARM="$(which swarm)"  # swarm 3.0 or more recent
-  declare -r VSEARCH="$(which vsearch) --quiet"  # vsearch 2.21 or more recent
+  declare -r VSEARCH="$(which vsearch) --quiet"  # vsearch 2.21.1 or more recent
   declare -ri ENCODING=33
   declare -r MIN_F=$(( ${#PRIMER_F} * 2 / 3 ))  # match is >= 2/3 of primer length
   declare -r MIN_R=$(( ${#PRIMER_R} * 2 / 3 ))
@@ -82,8 +82,6 @@ rule (in the final =while= loop):
   }
 
   dereplicate_fasta() {
-      # temporary fix until vsearch issue #472 is addressed
-      touch "${SAMPLE}.fas"
       # dereplicate and discard expected error values (ee)
       ${VSEARCH} \
           --derep_fulllength fifo_filtered_fasta \
