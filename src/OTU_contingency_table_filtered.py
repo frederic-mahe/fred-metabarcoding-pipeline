@@ -5,8 +5,8 @@ Merge different results into a sorted and filtered OTU contingency table.
 """
 
 __author__ = "Frédéric Mahé <frederic.mahe@cirad.fr>"
-__date__ = "2021/09/15"
-__version__ = "$Revision: 4.2"
+__date__ = "2023/04/15"
+__version__ = "$Revision: 4.3"
 
 import re
 import sys
@@ -201,7 +201,7 @@ def stampa_parse(assign):
     separator = "\t"
     stampa_file = assign
     stampa = [dict() for i in range(0, 256)]
-    
+
     with open(stampa_file, "r") as stampa_file:
         print("PROGRESS: parsing taxonomic assignments", file=sys.stderr)
         for line in stampa_file:
@@ -272,11 +272,30 @@ def print_table(representatives, stats, sorted_stats,
         index = int(seed[0:2], 16)
         sequence = representatives[index][seed]
         occurrences = dict([(sample, 0) for sample in samples])
-        ## temporary hotfix! (not good, produces a zero-abundance OTU)
         try:
             occurrences.update(seeds2samples[index][seed])
         except KeyError:
-            print("KeyError:", seed, "not in seeds2samples", sep=" ", file=sys.stderr)
+            # In rare cases, the cleaving step can change the seed of
+            # a cluster (for example, when one or more amplicons have
+            # the same abundance than the seed, but are lower in the
+            # alphabetical order). The original cluster still exists
+            # in the first "swarm", but appears with another seed in
+            # "swarm2". When these files are parsed (in order), a list
+            # of valid_otus is populated with the original seed, and
+            # then updated to point to the new seed. The stats and
+            # sorted_stats list also contain both the original and new
+            # seeds. However, downstream mappings such as
+            # seeds2samples, do not contain the original seed, only
+            # the new one.  When the script tries to print the
+            # occurrence table, sorted by decreasing abundance, the
+            # original seed is not present in seeds2samples and
+            # triggers an error. The solution is to skip the original
+            # seed, as the cluster is already represented by the new
+            # seed. Not skipping creates an empty cluster (zero reads)
+            # with the original seed. Empty clusters should be
+            # discarded by downstream analyses, but skipping is much
+            # cleaner.
+            continue
         spread = len([occurrences[sample] for sample in samples
                       if occurrences[sample] > 0])
         sequence_abundance, cloud = seeds[seed]
