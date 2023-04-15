@@ -1,7 +1,7 @@
 * Merge, trim and dereplicate pairs of fastq files
 
-Initial situation: fastq files are already duplicated, we have a pair
-of R1 and R2 files for each sample.
+Initial situation: fastq files are already demultiplexed, we have a
+pair of R1 and R2 files for each sample.
 
 To adapt it to another dataset, you need to change primer sequences in
 the initial block of variables, and the raw fastq file search pattern
@@ -141,3 +141,7 @@ in the backgroup before running the last consumer.
 Under certain very rare and elusive multithreading conditions,
 =vsearch --fastq_mergepairs= can hang, interrupting the data flow and
 the pipeline. Until that bug can be reproduced and fixed, be cautious.
+
+** TODO update pipeline with vsearch 2.23
+
+Now, sequence length are header attributes =extract_expected_error_values()= can be simplified.
