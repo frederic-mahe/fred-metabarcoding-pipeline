@@ -47,7 +47,7 @@ rule (in the final =while= loop):
 
   trim_primers() {
       # search forward primer in both normal and revcomp: now all reads
-      # are in the same orientation
+      # are in the same orientation. Matching leftmost is the default.
       ${CUTADAPT} \
           --revcomp \
           --front "${PRIMER_F};rightmost" \
