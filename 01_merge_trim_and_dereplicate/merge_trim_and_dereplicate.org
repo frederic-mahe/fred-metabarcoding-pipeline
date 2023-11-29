@@ -78,7 +78,7 @@ rule (in the final =while= loop):
       paste - - < fifo_filtered_fasta_bis | \
           awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
           sort --key=3,3n --key=1,1d --key=2,2n | \
-          uniq --check-chars=${length_of_sequence_IDs} > "${SAMPLE}.qual" &
+          uniq --check-chars=${length_of_sequence_IDs} > "${SAMPLE}.qual"
   }
 
   dereplicate_fasta() {
