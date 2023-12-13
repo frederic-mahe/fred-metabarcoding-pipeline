@@ -78,7 +78,7 @@ rule (in the final =while= loop):
       paste - - < fifo_filtered_fasta_bis | \
           awk 'BEGIN {FS = "[>;=\t]"} {print $2, $4, length($NF)}' | \
           sort --key=3,3n --key=1,1d --key=2,2n | \
-          uniq --check-chars=${length_of_sequence_IDs} > "${SAMPLE}.qual"
+          uniq --check-chars=${length_of_sequence_IDs} > "${SAMPLE}.qual" &
   }
 
   dereplicate_fasta() {
@@ -126,8 +126,8 @@ rule (in the final =while= loop):
           dereplicate_fasta
           list_local_clusters
 
-          # clean (make sure fifos are not reused)
-          rm ${FIFOS}
+          # make sure fifos are done and not reused
+          wait && rm ${FIFOS}
           unset FORWARD REVERSE SAMPLE
       done
 #+END_SRC
