@@ -164,3 +164,5 @@ are:
 Compressed (=.gz=, =.bz=) or not. The most current is
 =_L001_R1_001.fastq= as produced by Illumina MiSeq single-lane
 sequencers.
+
+** TODO add tests for executable, parameters and values provided by users
