@@ -106,8 +106,9 @@ rule (in the final =while= loop):
   }
 
   ## ------------------------------------------------------------------------ main
-  # from raw fastq files to ready-to-use sample files
   declare -r ANTI_PRIMER_R="$(revcomp "${PRIMER_R}")"
+
+  # from raw fastq files to ready-to-use sample files
   find . -name "${FASTQ_NAME_PATTERN}" -type f -print0 | \
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
