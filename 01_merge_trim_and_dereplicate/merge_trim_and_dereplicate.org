@@ -145,3 +145,21 @@ the pipeline. Until that bug can be reproduced and fixed, be cautious.
 ** TODO update pipeline with vsearch 2.23
 
 Now, sequence length are header attributes =extract_expected_error_values()= can be simplified.
+
+** TODO deduce fastq name pattern
+
+The goal is to eliminate the need for manual edits. Observed patterns
+are:
+
+- =_L001_R1_001.fastq=,
+- =_L001_R1_002.fastq=,
+- =_L001_R1.fastq=,
+- =_R1.fastq=,
+- =_n_1.fastq= (with =n= a value ranging from 1 to 9),
+- =_1.fastq=,
+- =.1.fastq=,
+- =forward.fastq= (and =reverse.fastq=)
+
+Compressed (=.gz=, =.bz=) or not. The most current is
+=_L001_R1_001.fastq= as produced by Illumina MiSeq single-lane
+sequencers.
