@@ -9,13 +9,16 @@ and sample file naming if your raw fastq files follow another naming
 rule (in the final =while= loop):
 
 #+BEGIN_SRC sh
+  #!/bin/bash
+  cd "${PWD}"
+
   export LC_ALL=C
 
   ## ------------------------------------------------------------ define variables
-  declare -r PRIMER_F="TTGTACACACCGCCC"
-  declare -r PRIMER_R="CCTTCNGCAGGTTCACCTAC"
+  declare -r PRIMER_F="${1}"
+  declare -r PRIMER_R="${2}"
+  declare -ri THREADS="${3:-4}"
   declare -r FASTQ_NAME_PATTERN="*_R1.fastq.gz"
-  declare -ri THREADS=4
   declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed"
   declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 4.1 or more recent
   declare -r SWARM="$(which swarm)"  # swarm 3.0 or more recent
@@ -131,6 +134,8 @@ rule (in the final =while= loop):
           wait && rm ${FIFOS}
           unset FORWARD REVERSE SAMPLE
       done
+
+  exit 0
 #+END_SRC
 
 The code above uses named pipes (=fifo=) to avoid writing intermediate
