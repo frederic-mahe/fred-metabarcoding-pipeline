@@ -18,7 +18,7 @@ rule (in the final =while= loop):
   declare -r PRIMER_F="${1}"
   declare -r PRIMER_R="${2}"
   declare -ri THREADS="${3:-4}"
-  declare -r FASTQ_NAME_PATTERN="*_R1.fastq.gz"
+  declare -r FASTQ_NAME_PATTERN="_R1_001.fastq.gz"
   declare -r CUTADAPT_OPTIONS="--minimum-length 32 --cores=${THREADS} --discard-untrimmed"
   declare -r CUTADAPT="$(which cutadapt) ${CUTADAPT_OPTIONS}"  # cutadapt 4.1 or more recent
   declare -r SWARM="$(which swarm)"  # swarm 3.0 or more recent
@@ -116,8 +116,8 @@ rule (in the final =while= loop):
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( $TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
-          REVERSE="${FORWARD/_R1/_R2}"  # adapt to fastq name patterns
-          SAMPLE="${FORWARD/_R1.*/}"
+          REVERSE="${FORWARD/_R1_/_R2_}"  # adapt to fastq name patterns
+          SAMPLE="${FORWARD/_L001_R1_*/}"
 
           # clean (remove older files, if any)
           rm --force "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
