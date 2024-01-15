@@ -240,6 +240,8 @@ run_mumu() {
         --match_list "${OUTPUT_TABLE%.*}.match_list" \
         --new_otu_table "${OUTPUT_TABLE%.*}_raw_mumu.table" \
         --log "${OUTPUT_TABLE%.*}.mumu.log"
+
+    rm -f "${OUTPUT_TABLE%.*}_reduced.table" "${OUTPUT_TABLE%.*}.match_list"
 }
 
 rebuild_occurrence_table_after_mumu() {
@@ -320,9 +322,6 @@ extract_fasta_sequences_from_occurrence_table
 trim_metadata_for_mumu
 find_similar_sequences
 run_mumu
-
-rm -f "${OUTPUT_TABLE%.*}_reduced.table"
-
 rebuild_occurrence_table_after_mumu
 # refactoring: fix cluster sorting after mumu
 extract_fasta_sequences_from_occurrence_table2
