@@ -114,7 +114,7 @@ rule (in the final =while= loop):
   # from raw fastq files to ready-to-use sample files
   find . -name "${FASTQ_NAME_PATTERN}" -type f -print0 | \
       while IFS= read -r -d '' FORWARD ; do
-          TICKER=$(( $TICKER + 1 ))
+          TICKER=$(( TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
           REVERSE="${FORWARD/_R1_/_R2_}"  # adapt to fastq name patterns
           SAMPLE="${FORWARD/_L001_R1*/}"
