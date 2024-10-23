@@ -10,7 +10,7 @@ rule (in the final =while= loop):
 
 #+BEGIN_SRC sh
   #!/bin/bash
-  cd "${PWD}"
+  cd "${PWD}" || exit
 
   export LC_ALL=C
 
