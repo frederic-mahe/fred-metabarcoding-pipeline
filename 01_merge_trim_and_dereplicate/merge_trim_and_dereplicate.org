@@ -38,6 +38,82 @@ rule (in the final =while= loop):
       tr "${nucleotides}" "${complements}" <<< "${1}" | rev
   }
 
+  get_reverse_name() {
+      ## common patterns
+      # - extension does not matter (fastq or fq, gz or bz2 or none)
+      # - `_L00[1-9]_R{1,2}_001.fastq.gz` (MiSeq)
+      # - `_L00[1-9]_R{1,2}.fastq.gz`
+      # - `_[1-9]_{1,2}_.*.fastq.gz`
+      # - `_[1-9]_{1,2}.fastq.gz`
+      # - `_R{1,2}.fastq.gz`
+      # - `_{1,2}.fastq.gz`
+      FORWARD_FILE="${1}"
+      case "${FORWARD_FILE}" in
+          ,*_L00[1-9]_R1_00[1-9]*) # last segment should always be '001'
+              sed -r 's/_(L00[1-9])_R1_(00[1-9])([.](fastq|fq)([.](gz|bz2))?)$/_\1_R2_\2\3/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*_L00[1-9]_*_R1*)
+              sed -r 's/_(L00[1-9]_.*)_R1([.](fastq|fq)([.](gz|bz2))?)$/_\1_R2\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*_L00[1-9]_R1*)
+              sed -r 's/_(L00[1-9])_R1([.](fastq|fq)([.](gz|bz2))?)$/_\1_R2\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*[._][1-9]_1_*)
+              sed -r 's/([._][1-9])_1_([^/]*[.](fastq|fq)([.](gz|bz2))?)$/\1_2_\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*[._][1-9]_1[.]*)
+              sed -r 's/([._][1-9])_1[.]((fastq|fq)([.](gz|bz2))?)$/\1_2.\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*[._]R1*)
+              sed -r 's/([._])R1([.](fastq|fq)([.](gz|bz2))?)$/\1R2\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*[._]1*)
+              sed -r 's/([._])1([.](fastq|fq)([.](gz|bz2))?)$/\12\2/' <<< "${FORWARD_FILE}"
+              ;;
+          ,*)
+              echo "unknown"
+              ;;
+      esac
+  }
+
+  get_sample_name() {
+      ## common patterns
+      # - extension does not matter (fastq or fq, gz or bz2 or none)
+      # - `_L00[1-9]_R{1,2}_001.fastq.gz` (MiSeq)
+      # - `_L00[1-9]_R{1,2}.fastq.gz`
+      # - `_[1-9]_{1,2}_.*.fastq.gz`
+      # - `_[1-9]_{1,2}.fastq.gz`
+      # - `_R{1,2}.fastq.gz`
+      # - `_{1,2}.fastq.gz`
+      FORWARD_FILE="${1}"
+      case "${FORWARD_FILE}" in
+          ,*_L00[1-9]_R1_00[1-9]*) # last segment should always be '001'
+              echo "${FORWARD_FILE/_L00[1-9]*/}"
+              ;;
+          ,*_L00[1-9]_*_R1*)
+              echo "${FORWARD_FILE/_L00[1-9]*/}"
+              ;;
+          ,*_L00[1-9]_R1*)
+              echo "${FORWARD_FILE/_L00[1-9]*/}"
+              ;;
+          ,*[._][1-9]_1_*)
+              echo "${FORWARD_FILE/[._][1-9]_1_*/}"
+              ;;
+          ,*[._][1-9]_1[.]*)
+              echo "${FORWARD_FILE/[._][1-9]_1*/}"
+              ;;
+          ,*[._]R1*)
+              echo "${FORWARD_FILE/[._]R1*/}"
+              ;;
+          ,*[._]1*)
+              echo "${FORWARD_FILE/[._]1*/}"
+              ;;
+          ,*)
+              echo "unknown"
+              ;;
+      esac
+  }
+
   merge_fastq_pair() {
       ${VSEARCH} \
           --threads "${THREADS}" \
@@ -116,8 +192,8 @@ rule (in the final =while= loop):
       while IFS= read -r -d '' FORWARD ; do
           TICKER=$(( TICKER + 1 ))
           echo -e "${TICKER}\t${FORWARD}"
-          REVERSE="${FORWARD/_R1_/_R2_}"  # adapt to fastq name patterns
-          SAMPLE="${FORWARD/_L001_R1*/}"
+          REVERSE="$(get_reverse_name "${FORWARD}")"
+          SAMPLE="$(get_sample_name "${FORWARD}")"
 
           # clean (remove older files, if any)
           rm --force "${SAMPLE}".{fas,qual,log,stats} ${FIFOS}
@@ -152,7 +228,8 @@ the pipeline. Until that bug can be reproduced and fixed, be cautious.
 
 Now, sequence length are header attributes =extract_expected_error_values()= can be simplified.
 
-** TODO deduce fastq name pattern
+** DONE deduce fastq name pattern
+CLOSED: [2025-05-28 mer. 10:19]
 
 The goal is to eliminate the need for manual edits. Observed patterns
 are:
@@ -169,5 +246,72 @@ are:
 Compressed (=.gz=, =.bz=) or not. The most current is
 =_L001_R1_001.fastq= as produced by Illumina MiSeq single-lane
 sequencers.
+
+#+begin_src sh
+  ## ----------------------------------------------------------------------- tests
+
+  test_get_reverse_name() {
+      echo -ne "${1}\t${2}\t"
+      get_reverse_name "${1}" | \
+          grep -qw "${2}" && \
+          echo "ok" || \
+              echo "fail!"
+  }
+
+  ## test extensions
+  test_get_reverse_name "A_L001_R1_001.fastq" "A_L001_R2_001.fastq"
+  test_get_reverse_name "A_L001_R1_001.fastq.gz" "A_L001_R2_001.fastq.gz"
+  test_get_reverse_name "A_L001_R1_001.fastq.bz2" "A_L001_R2_001.fastq.bz2"
+  test_get_reverse_name "A_L001_R1_001.fq" "A_L001_R2_001.fq"
+  test_get_reverse_name "A_L001_R1_001.fq.gz" "A_L001_R2_001.fq.gz"
+  test_get_reverse_name "A_L001_R1_001.fq.bz2" "A_L001_R2_001.fq.bz2"
+
+  ## test R1-R2 patterns
+  test_get_reverse_name "A_L001_R1_001.fastq.gz" "A_L001_R2_001.fastq.gz"
+  test_get_reverse_name "A_L001_R1_002.fastq.gz" "A_L001_R2_002.fastq.gz"
+  test_get_reverse_name "A_L009_R1_001.fastq.gz" "A_L009_R2_001.fastq.gz"
+  test_get_reverse_name "A_L001_junk_R1.fastq.gz" "A_L001_junk_R2.fastq.gz"
+  test_get_reverse_name "A_L009_junk_R1.fastq.gz" "A_L009_junk_R2.fastq.gz"
+  test_get_reverse_name "A_L001_R1.fastq.gz" "A_L001_R2.fastq.gz"
+  test_get_reverse_name "A_L009_R1.fastq.gz" "A_L009_R2.fastq.gz"
+  test_get_reverse_name "A_1_1_junk.fastq.gz" "A_1_2_junk.fastq.gz"
+  test_get_reverse_name "A_9_1_junk.fastq.gz" "A_9_2_junk.fastq.gz"
+  test_get_reverse_name "A.1_1_junk.fastq.gz" "A.1_2_junk.fastq.gz"
+  test_get_reverse_name "A_1_1.fastq.gz" "A_1_2.fastq.gz"
+  test_get_reverse_name "A_9_1.fastq.gz" "A_9_2.fastq.gz"
+  test_get_reverse_name "A.1_1.fastq.gz" "A.1_2.fastq.gz"
+  test_get_reverse_name "A_R1.fastq.gz" "A_R2.fastq.gz"
+  test_get_reverse_name "A.R1.fastq.gz" "A.R2.fastq.gz"
+  test_get_reverse_name "A_R3.fastq.gz" "unknown"
+
+
+  test_get_sample_name() {
+      echo -ne "${1}\t${2}\t"
+      get_sample_name "${1}" | \
+          grep -qw "${2}" && \
+          echo "ok" || \
+              echo "fail!"
+  }
+
+  test_get_sample_name "A_L001_R1_001.fastq.gz" "A"
+  test_get_sample_name "A_L009_R1_001.fastq.gz" "A"
+  test_get_sample_name "A_L001_junk_R1.fastq.gz" "A"
+  test_get_sample_name "A_L009_junk_R1.fastq.gz" "A"
+  test_get_sample_name "A_L001_R1.fastq.gz" "A"
+  test_get_sample_name "A_L009_R1.fastq.gz" "A"
+  test_get_sample_name "A_1_1_junk.fastq.gz" "A"
+  test_get_sample_name "A_9_1_junk.fastq.gz" "A"
+  test_get_sample_name "A_1_1.fastq.gz" "A"
+  test_get_sample_name "A_9_1.fastq.gz" "A"
+  test_get_sample_name "A_R1.fastq.gz" "A"
+  test_get_sample_name "A.R1.fastq.gz" "A"
+  test_get_sample_name "A_1.fastq.gz" "A"
+  test_get_sample_name "A.1.fastq.gz" "A"
+  test_get_sample_name "A_L001_R1_002.fastq.gz" "A"
+  test_get_sample_name "R1_L001_R1_001.fastq.gz" "R1"  # R1 pattern in basename!
+  test_get_sample_name "A_R1_L001_R1_001.fastq.gz" "A_R1"  # R1 pattern in basename!
+  test_get_sample_name "A_R3.fastq.gz" "unknown"
+  test_get_sample_name "_L001_R1_001.fastq.gz" ""  # empty file name!
+#+end_src
 
 ** TODO add tests for executable, parameters and values provided by users
