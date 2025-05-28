@@ -315,3 +315,5 @@ sequencers.
 #+end_src
 
 ** TODO add tests for executable, parameters and values provided by users
+
+check if reverse fastq file exists
