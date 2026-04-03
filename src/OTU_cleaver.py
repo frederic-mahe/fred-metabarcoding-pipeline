@@ -22,37 +22,45 @@ import operator
 #                                                                             #
 # *************************************************************************** #
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """
     Parse arguments from command line.
     """
     parser = argparse.ArgumentParser(
-        description="break swarm clusters, using sample distribution data.")
+        description="break swarm clusters, using sample distribution data."
+    )
 
-    parser.add_argument("--global_stats",
-                        dest="global_stats_file",
-                        required=True,
-                        help="cluster statistics")
+    parser.add_argument(
+        "--global_stats",
+        dest="global_stats_file",
+        required=True,
+        help="cluster statistics",
+    )
 
-    parser.add_argument("--per_sample_stats",
-                        dest="per_sample_stats_file",
-                        required=True,
-                        help="per-sample cluster statistics")
+    parser.add_argument(
+        "--per_sample_stats",
+        dest="per_sample_stats_file",
+        required=True,
+        help="per-sample cluster statistics",
+    )
 
-    parser.add_argument("--fasta",
-                        dest="fasta_file",
-                        required=True,
-                        help="amplicon sequences")
+    parser.add_argument(
+        "--fasta", dest="fasta_file", required=True, help="amplicon sequences"
+    )
 
-    parser.add_argument("--struct",
-                        dest="struct_file",
-                        required=True,
-                        help="internal structure of clusters")
+    parser.add_argument(
+        "--struct",
+        dest="struct_file",
+        required=True,
+        help="internal structure of clusters",
+    )
 
-    parser.add_argument("--swarms",
-                        dest="swarms_file",
-                        required=True,
-                        help="list of amplicons per cluster")
+    parser.add_argument(
+        "--swarms",
+        dest="swarms_file",
+        required=True,
+        help="list of amplicons per cluster",
+    )
 
     ARGS = parser.parse_args()
 
@@ -82,8 +90,10 @@ def per_sample_stats_parse(per_sample_stats_file, percentage):
 
     # keep only local seeds present in at least "percentage" of samples
     threshold = percentage * number_of_samples
-    seeds = [{k: v for k, v in per_sample_stats[i].items() if v >= threshold}
-             for i in range(0, 256)]
+    seeds = [
+        {k: v for k, v in per_sample_stats[i].items() if v >= threshold}
+        for i in range(0, 256)
+    ]
 
     return threshold, seeds
 
@@ -184,8 +194,7 @@ def struct_parse(struct_file, seeds, global_seeds):
                     new_clusters.append(clusters)
                 previous_cluster_id = int(cluster_id)
                 global_seed = father
-                has_a_local_seed = (True if global_seed in global_seeds_set
-                                    else False)
+                has_a_local_seed = True if global_seed in global_seeds_set else False
                 clusters = dict()
                 if has_a_local_seed:
                     clusters[global_seed] = set([global_seed])
@@ -236,7 +245,7 @@ def add_abundance_values(swarms_file, new_clusters, swarms):
             # sort amplicons by decreasing abundance value and by
             # name (fix a rare bug: a tie leading to wrong seed
             # selection)
-            swarm.sort(key = lambda x: (-x[1], x[0]))
+            swarm.sort(key=lambda x: (-x[1], x[0]))
 
             # check if the seed changed after sorting (rare case)
             seed = swarm[0][0]
@@ -270,13 +279,17 @@ def per_cluster_stats(global_stats_file, new_clusters_with_abundance):
             # singletons = 0         # 5. number of amps with an abundance of 1
             # number_of_steps = 0    # 6. number of steps in the cluster
             # number of layers       # 7. columns 6 and 7 are not updated
-            new_stats.append((len(super_cluster[cluster]),
-                              total_abundance,
-                              cluster,
-                              seed_abundance,
-                              singletons,
-                              "0",
-                              "0"))
+            new_stats.append(
+                (
+                    len(super_cluster[cluster]),
+                    total_abundance,
+                    cluster,
+                    seed_abundance,
+                    singletons,
+                    "0",
+                    "0",
+                )
+            )
     # sort clusters by increasing number of reads first, then in a
     # second step sort by decreasing number of unique amplicons, and
     # amplicon name (sort by amplicon name first, stable sorting will
@@ -298,8 +311,11 @@ def per_cluster_swarms(swarms_file, new_clusters_with_abundance):
     with open(swarms_file + "2", "w") as new_swarms_file:
         for super_cluster in new_clusters_with_abundance:
             for cluster in super_cluster:
-                print(*[t[0] + ";size=" + str(t[1]) for t in super_cluster[cluster]],
-                      sep=" ", file=new_swarms_file)
+                print(
+                    *[t[0] + ";size=" + str(t[1]) for t in super_cluster[cluster]],
+                    sep=" ",
+                    file=new_swarms_file
+                )
 
     return None
 
@@ -308,10 +324,12 @@ def fasta_parse(fasta_file, new_stats, swarm_parameters):
     """
     Get seed sequences, update abundances.
     """
-    new_representatives_file = (os.path.splitext(fasta_file)[0]
-                                + "_"
-                                + swarm_parameters
-                                + "_representatives.fas2")
+    new_representatives_file = (
+        os.path.splitext(fasta_file)[0]
+        + "_"
+        + swarm_parameters
+        + "_representatives.fas2"
+    )
     # create a dict of target amplicons and abundances
     fasta = [dict() for i in range(0, 256)]
     for t in new_stats:
@@ -342,8 +360,11 @@ def fasta_parse(fasta_file, new_stats, swarm_parameters):
             except ValueError:
                 print(amplicon, fasta[index][amplicon], min_abundance)
                 sys.exit(-1)
-            print(">" + amplicon + separator + str(abundance)
-                  + "\n" + sequence, sep="", file=new_representatives_file)
+            print(
+                ">" + amplicon + separator + str(abundance) + "\n" + sequence,
+                sep="",
+                file=new_representatives_file,
+            )
 
     return None
 
@@ -364,25 +385,23 @@ def main():
         swarm_parameters = "1f"
     else:
         swarm_parameters = "1"
-    
+
     # cleaving threshold (keystone parameter)
     PERCENTAGE = 0.05
 
     # Parse input files
-    threshold, seeds = per_sample_stats_parse(per_sample_stats_file,
-                                              PERCENTAGE)
+    threshold, seeds = per_sample_stats_parse(per_sample_stats_file, PERCENTAGE)
     stats_parse(global_stats_file, threshold, seeds)
     swarms, global_seeds = swarms_parse(swarms_file, seeds)
     new_clusters = struct_parse(struct_file, seeds, global_seeds)
 
     # Add abundance values
-    new_clusters_with_abundance = add_abundance_values(swarms_file,
-                                                       new_clusters,
-                                                       swarms)
+    new_clusters_with_abundance = add_abundance_values(
+        swarms_file, new_clusters, swarms
+    )
 
     # Create output files (stats2, swarms2, fas2)
-    new_stats = per_cluster_stats(global_stats_file,
-                                  new_clusters_with_abundance)
+    new_stats = per_cluster_stats(global_stats_file, new_clusters_with_abundance)
     per_cluster_swarms(swarms_file, new_clusters_with_abundance)
     fasta_parse(fasta_file, new_stats, swarm_parameters)
 
@@ -395,7 +414,7 @@ def main():
 #                                                                             #
 # *************************************************************************** #
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     main()
 
